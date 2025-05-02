@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 import pytz
 from aiogram import Bot, Dispatcher, types
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils import executor
 
 API_TOKEN = os.getenv('API_TOKEN')
@@ -16,24 +17,36 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
+# Клавиатура с командами
+menu_kb = ReplyKeyboardMarkup(resize_keyboard=True)
+menu_kb.add(KeyboardButton("/start"), KeyboardButton("/compare"))
+
 @dp.message_handler(commands=['start'])
 async def cmd_start(message: types.Message):
-    help_text = (
-        "TimeCompareBot\n\n"
-        "This bot compares current time between two time zones.\n\n"
-        "Usage:\n"
-        "/compare <TZ1> <TZ2>\n\n"
-        "Example:\n"
-        "/compare Europe/Moscow Asia/Tokyo\n\n"
-        "List of time zones: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+    text = (
+        "Бот сравнения времени по часовым поясам.
+
+"
+        "Использование:
+"
+        "/compare <ТЗ1> <ТЗ2>
+
+"
+        "Пример:
+"
+        "/compare Europe/Moscow Asia/Tokyo
+
+"
+        "Список всех зон: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
     )
-    await message.reply(help_text)
+    await message.reply(text, reply_markup=menu_kb)
 
 @dp.message_handler(commands=['compare'])
 async def cmd_compare(message: types.Message):
     args = message.get_args().split()
     if len(args) != 2:
-        await message.reply("Please use: /compare <TZ1> <TZ2>")
+        await message.reply("Формат: /compare <ТЗ1> <ТЗ2>
+Пример: /compare Europe/Moscow Asia/Tokyo")
         return
 
     tz1_name, tz2_name = args
@@ -42,7 +55,10 @@ async def cmd_compare(message: types.Message):
         tz2 = pytz.timezone(tz2_name)
     except Exception:
         await message.reply(
-            "Unknown time zone. Use IANA names like:\n  Europe/Moscow\n  Asia/Tokyo"
+            "Неизвестный часовой пояс. Используйте IANA-названия:
+"
+            "  Europe/Moscow
+  Asia/Tokyo"
         )
         return
 
@@ -56,9 +72,15 @@ async def cmd_compare(message: types.Message):
     m = remainder // 60
 
     reply = (
-        f"Time in {tz1_name}: {now1.strftime('%Y-%m-%d %H:%M')}\n"
-        f"Time in {tz2_name}: {now2.strftime('%Y-%m-%d %H:%M')}\n"
-        f"Difference: {sign}{h}h {m}m"
+        f"Текущее время:
+
+"
+        f"{tz1_name}: {now1.strftime('%Y-%m-%d %H:%M')}
+"
+        f"{tz2_name}: {now2.strftime('%Y-%m-%d %H:%M')}
+
+"
+        f"Разница: {sign}{h} ч {m} мин"
     )
     await message.reply(reply)
 

@@ -26,8 +26,9 @@ cities = {
     'Южная Георгия (UTC-2)': 'Atlantic/South_Georgia',
     'Азорские острова (UTC-1)': 'Atlantic/Azores',
     'Лондон (UTC+0)': 'Europe/London',
-    'Берлин (UTC+1)': 'Europe/Berlin',
+    'Варшава (UTC+1)': 'Europe/Warsaw',
     'Киев (UTC+2)': 'Europe/Kyiv',
+    'Москва (UTC+3)': 'Europe/Moscow',
     'Минск (UTC+3)': 'Europe/Minsk',
     'Дубай (UTC+4)': 'Asia/Dubai',
     'Исламабад (UTC+5)': 'Asia/Karachi',
@@ -39,11 +40,14 @@ cities = {
     'Соломоновы острова (UTC+11)': 'Pacific/Guadalcanal',
     'Окленд (UTC+12)': 'Pacific/Auckland',
     'Тонга (UTC+13)': 'Pacific/Tongatapu',
-    'Киритимати (UTC+14)': 'Pacific/Kiritimati',
-
+    'Киритимати (UTC+14)': 'Pacific/Kiritimati'
+}
     'Москва (UTC+3)': 'Europe/Moscow',
     'Нью-Йорк (UTC-4)': 'America/New_York',
     'Бали (UTC+8)': 'Asia/Makassar',
+    'Минск (UTC+3)': 'Europe/Minsk',
+    'Токио (UTC+9)': 'Asia/Tokyo',
+    'Сидней (UTC+10)': 'Australia/Sydney',
 }
 
 user_selection = {}
@@ -91,10 +95,7 @@ async def city2_selected(callback: types.CallbackQuery):
         rows.append(f"{local1:<7} {mark1} | {local2:<7} {mark2}")
 
     table = "\n".join(rows)
-".join(rows)
-    text = f"{city1:<20} | {city2}
-{'-' * 38}
-{table}"
+    text = f"{city1:<20} | {city2}\n{'-' * 38}\n{table}"
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
@@ -102,6 +103,7 @@ async def city2_selected(callback: types.CallbackQuery):
         InlineKeyboardButton("Показать текущее время", callback_data="show_now"),
         InlineKeyboardButton("🔁 Обновить таблицу", callback_data="refresh_table")
     )
+
     await callback.message.edit_text(text, reply_markup=kb)
 
 @dp.callback_query_handler(lambda c: c.data == "show_now")
@@ -119,19 +121,6 @@ async def show_now(callback: types.CallbackQuery):
 async def restart(callback: types.CallbackQuery):
     await start(callback.message)
 
-if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
-
-
-@dp.message_handler(commands=["format"])
-async def set_format(message: types.Message):
-    arg = message.get_args().strip()
-    if arg not in ["12", "24"]:
-        await message.answer("Используйте /format 12 или /format 24")
-        return
-    user_format[message.from_user.id] = arg
-    await message.answer(f"✅ Формат времени установлен: {arg}-часовой")
-
 @dp.callback_query_handler(lambda c: c.data == "refresh_table")
 async def refresh_table(callback: types.CallbackQuery):
     data = user_selection.get(callback.from_user.id, {})
@@ -144,3 +133,15 @@ async def refresh_table(callback: types.CallbackQuery):
         if name != city1:
             kb.insert(InlineKeyboardButton(name, callback_data=f"city2|{name}"))
     await callback.message.answer(f"Выберите второй город заново для обновления таблицы:", reply_markup=kb)
+
+@dp.message_handler(commands=["format"])
+async def set_format(message: types.Message):
+    arg = message.get_args().strip()
+    if arg not in ["12", "24"]:
+        await message.answer("Используйте /format 12 или /format 24")
+        return
+    user_format[message.from_user.id] = arg
+    await message.answer(f"✅ Формат времени установлен: {arg}-часовой")
+
+if __name__ == "__main__":
+    executor.start_polling(dp, skip_updates=True)

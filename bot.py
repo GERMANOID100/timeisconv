@@ -40,8 +40,7 @@ cities = {
     'Соломоновы острова (UTC+11)': 'Pacific/Guadalcanal',
     'Окленд (UTC+12)': 'Pacific/Auckland',
     'Тонга (UTC+13)': 'Pacific/Tongatapu',
-    'Киритимати (UTC+14)': 'Pacific/Kiritimati'
-}
+    'Киритимати (UTC+14)': 'Pacific/Kiritimati',
     'Москва (UTC+3)': 'Europe/Moscow',
     'Нью-Йорк (UTC-4)': 'America/New_York',
     'Бали (UTC+8)': 'Asia/Makassar',

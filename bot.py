@@ -134,6 +134,19 @@ async def show_comparison(uid, city1, city2, lang):
             diff=diff
         )
         await bot.send_message(uid, msg, reply_markup=kb)
+
+        # Генерация таблицы сравнения
+        table_lines = ["\n🕓 Временная таблица:"]
+        for h in range(24):
+            temp1 = now1.replace(hour=h, minute=0, second=0, microsecond=0)
+            temp2 = temp1.astimezone(tz2)
+            mark = "✅" if h == now1.hour else "  "
+            day_note = ""
+            if temp2.day != now1.day:
+                day_note = f" ({temp2.strftime('%A')})"
+            table_lines.append(f"{mark} {temp1.strftime('%H:%M')} → {temp2.strftime('%H:%M')}{day_note}")
+        await bot.send_message(uid, "\n".join(table_lines))
+
         user_data[uid] = {"city1": city2, "city2": city1}
     except Exception as e:
         logging.exception("Ошибка при сравнении времени")
@@ -150,6 +163,43 @@ async def handle_actions(callback_query: types.CallbackQuery):
     elif callback_query.data == "switch":
         if last["city1"] and last["city2"]:
             await show_comparison(uid, last["city2"], last["city1"], lang)
+
+
+@dp.message_handler(commands=['table'])
+async def time_table(message: types.Message):
+    uid = message.from_user.id
+    lang = user_lang.get(uid, "ru")
+    data = user_data.get(uid, {})
+    city1, city2 = data.get("city1"), data.get("city2")
+
+    if not city1 or not city2:
+        await message.reply("Пожалуйста, сначала выберите два города через /start.")
+        return
+
+    tz1 = pytz.timezone(cities[city1])
+    tz2 = pytz.timezone(cities[city2])
+    now1 = datetime.now(tz1)
+    now_hour = now1.hour
+    date1 = now1.strftime("%A")
+
+    lines = [f"🕓 Временная таблица:",
+             f"{city1} ({tz1.zone}) ↔ {city2} ({tz2.zone})"]
+
+    for h in range(24):
+        local1 = now1.replace(hour=h, minute=0, second=0, microsecond=0)
+        local2 = local1.astimezone(tz2)
+
+        mark = "✅" if h == now_hour else "  "
+        day_change = ""
+        if local1.day != now1.day:
+            day_change = f"({local1.strftime('%A')})"
+        if local2.day != now1.day:
+            day_change += f" → ({local2.strftime('%A')})"
+
+        lines.append(f"{mark} {local1.strftime('%H:%M')} → {local2.strftime('%H:%M')} {day_change}".strip())
+
+    await message.reply("\n".join(lines))
+
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)

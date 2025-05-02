@@ -77,24 +77,24 @@ async def city2_selected(callback: types.CallbackQuery):
 
     tz1 = cities[city1]
     tz2 = cities[city2]
+    rows = []
     now_utc = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
     current_hour = datetime.now(timezone(tz1)).hour
+    fmt = '%I:%M %p' if user_format.get(callback.from_user.id, '24') == '12' else '%H:%M'
 
-    rows = []
-now_utc = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
-current_hour = datetime.now(timezone(tz1)).hour
-fmt = '%I:%M %p' if user_format.get(callback.from_user.id, '24') == '12' else '%H:%M'
+    for hour in range(24):
+        time_utc = now_utc.replace(hour=hour)
+        local1 = time_utc.astimezone(timezone(tz1)).strftime(fmt)
+        local2 = time_utc.astimezone(timezone(tz2)).strftime(fmt)
+        mark1 = "🟢" if hour == current_hour else " "
+        mark2 = "🟢" if hour == datetime.now(timezone(tz2)).hour else " "
+        rows.append(f"{local1:<7} {mark1} | {local2:<7} {mark2}")
 
-for hour in range(24):
-    time_utc = now_utc.replace(hour=hour)
-    local1 = time_utc.astimezone(timezone(tz1)).strftime(fmt)
-    local2 = time_utc.astimezone(timezone(tz2)).strftime(fmt)
-    mark1 = "🟢" if hour == current_hour else " "
-    mark2 = "🟢" if hour == datetime.now(timezone(tz2)).hour else " "
-    rows.append(f"{local1:<7} {mark1} | {local2:<7} {mark2}")
-
-    table = "\n".join(rows)
-    text = f"{city1:<20} | {city2}\n{'-' * 38}\n{table}"
+    table = "
+".join(rows)
+    text = f"{city1:<20} | {city2}
+{'-' * 38}
+{table}"
 
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
@@ -102,7 +102,6 @@ for hour in range(24):
         InlineKeyboardButton("Показать текущее время", callback_data="show_now"),
         InlineKeyboardButton("🔁 Обновить таблицу", callback_data="refresh_table")
     )
-
     await callback.message.edit_text(text, reply_markup=kb)
 
 @dp.callback_query_handler(lambda c: c.data == "show_now")

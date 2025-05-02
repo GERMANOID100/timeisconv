@@ -92,8 +92,6 @@ for hour in range(24):
     mark1 = "🟢" if hour == current_hour else " "
     mark2 = "🟢" if hour == datetime.now(timezone(tz2)).hour else " "
     rows.append(f"{local1:<7} {mark1} | {local2:<7} {mark2}")
-    
-        rows.append(f"{local1:<8} | {local2:<8} {marker}")
 
     table = "\n".join(rows)
     text = f"{city1:<20} | {city2}\n{'-' * 38}\n{table}"

@@ -51,11 +51,17 @@ cities = {
 user_selection = {}
 
 def get_time_info(tz_name):
-    now = datetime.now(timezone(tz_name))
-    offset = now.utcoffset()
-    if offset is None:
-        raise ValueError("UTC offset is None")
-    return now.strftime('%H:%M:%S %d.%m.%Y'), int(offset.total_seconds() / 3600)
+    try:
+        now = datetime.now(timezone(tz_name))
+        offset = now.utcoffset()
+        if offset is None:
+            raise ValueError("offset is None")
+        offset_hours = int(offset.total_seconds() / 3600)
+        logger.info(f"{tz_name}: now={now}, offset={offset_hours}")
+        return now.strftime('%H:%M:%S %d.%m.%Y'), offset_hours
+    except Exception as e:
+        logger.exception(f"Ошибка при получении времени для {tz_name}")
+        raise
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
@@ -80,14 +86,12 @@ async def city2_selected(callback: types.CallbackQuery):
         city2 = callback.data.split("|", 1)[1]
         data = user_selection.get(callback.from_user.id, {})
         city1 = data.get("city1")
-
         if not city1 or city1 not in cities or city2 not in cities:
             await callback.message.answer("Ошибка. Выбор города некорректен.")
             return
 
         tz1 = cities[city1]
         tz2 = cities[city2]
-
         logger.info(f"Сравнение: {city1} ({tz1}) vs {city2} ({tz2})")
 
         time1, offset1 = get_time_info(tz1)
@@ -114,6 +118,9 @@ async def city2_selected(callback: types.CallbackQuery):
 @dp.callback_query_handler(lambda c: c.data == "restart")
 async def restart(callback: types.CallbackQuery):
     await start(callback.message)
+
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)

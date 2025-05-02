@@ -6,10 +6,15 @@ from aiogram.utils import executor
 from pytz import timezone
 from datetime import datetime
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 API_TOKEN = os.getenv("BOT_TOKEN")
+if not API_TOKEN:
+    raise ValueError("BOT_TOKEN не задан")
+
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
-logging.basicConfig(level=logging.INFO)
 
 cities = {
     'Бейкер-Айленд (UTC-12)': 'Etc/GMT+12',
@@ -45,52 +50,63 @@ user_selection = {}
 
 def get_time_info(tz_name):
     now = datetime.now(timezone(tz_name))
-    utc_offset = now.utcoffset().total_seconds() / 3600
-    return now.strftime('%H:%M:%S %d.%m.%Y'), int(utc_offset)
+    offset_hours = int(now.utcoffset().total_seconds() / 3600)
+    time_str = now.strftime('%H:%M:%S %d.%m.%Y')
+    return time_str, offset_hours
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     kb = InlineKeyboardMarkup(row_width=2)
     for name in cities:
-        kb.insert(InlineKeyboardButton(name, callback_data=f"city1_{name}"))
+        kb.insert(InlineKeyboardButton(name, callback_data=f"city1|{name}"))
     await message.answer("Выберите первый город:", reply_markup=kb)
 
-@dp.callback_query_handler(lambda c: c.data.startswith('city1_'))
-async def select_city1(callback: types.CallbackQuery):
-    city1 = callback.data.split('_', 1)[1]
-    user_selection[callback.from_user.id] = {'city1': city1}
-    kb = InlineKeyboardMarkup(row_width=2)
-    for name in cities:
-        if name != city1:
-            kb.insert(InlineKeyboardButton(name, callback_data=f"city2_{name}"))
-    await callback.message.edit_text(f"Первый город: {city1}\nТеперь выберите второй город:", reply_markup=kb)
+@dp.callback_query_handler(lambda c: c.data.startswith("city1|"))
+async def city1_selected(callback: types.CallbackQuery):
+    try:
+        city1 = callback.data.split("|", 1)[1]
+        user_selection[callback.from_user.id] = {"city1": city1}
+        kb = InlineKeyboardMarkup(row_width=2)
+        for name in cities:
+            if name != city1:
+                kb.insert(InlineKeyboardButton(name, callback_data=f"city2|{name}"))
+        await callback.message.edit_text(f"Первый город: {city1}\nТеперь выберите второй город:", reply_markup=kb)
+    except Exception as e:
+        logger.exception("Ошибка при выборе первого города")
+        await callback.message.answer("Произошла ошибка. Попробуйте ещё раз.")
 
-@dp.callback_query_handler(lambda c: c.data.startswith('city2_'))
-async def select_city2(callback: types.CallbackQuery):
-    city2 = callback.data.split('_', 1)[1]
-    data = user_selection.get(callback.from_user.id, {})
-    city1 = data.get('city1')
-    if not city1:
-        await callback.message.answer("Ошибка. Начните сначала: /start")
-        return
-    tz1 = cities[city1]
-    tz2 = cities[city2]
-    time1, offset1 = get_time_info(tz1)
-    time2, offset2 = get_time_info(tz2)
-    diff_hours = abs(offset1 - offset2)
-    diff_str = f"{int(diff_hours)} ч." if diff_hours.is_integer() else f"{diff_hours:.1f} ч."
-    text = (
-        f"🕒 {city1}: {time1}\n"
-        f"🕒 {city2}: {time2}\n"
-        f"📍Разница: {diff_str}"
-    )
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("Сравнить снова", callback_data="restart"))
-    await callback.message.edit_text(text, reply_markup=kb)
+@dp.callback_query_handler(lambda c: c.data.startswith("city2|"))
+async def city2_selected(callback: types.CallbackQuery):
+    try:
+        city2 = callback.data.split("|", 1)[1]
+        data = user_selection.get(callback.from_user.id, {})
+        city1 = data.get("city1")
+        if not city1:
+            await callback.message.answer("Ошибка. Начните с /start")
+            return
+        tz1 = cities[city1]
+        tz2 = cities[city2]
+        time1, offset1 = get_time_info(tz1)
+        time2, offset2 = get_time_info(tz2)
+        diff = abs(offset1 - offset2)
+        diff_str = f"{int(diff)} ч." if diff.is_integer() else f"{diff:.1f} ч."
 
-@dp.callback_query_handler(lambda c: c.data == 'restart')
+        text = (
+            f"🕒 {city1}: {time1}\n"
+            f"🕒 {city2}: {time2}\n"
+            f"📍Разница во времени: {diff_str}"
+        )
+        kb = InlineKeyboardMarkup().add(
+            InlineKeyboardButton("Сравнить снова", callback_data="restart")
+        )
+        await callback.message.edit_text(text, reply_markup=kb)
+    except Exception as e:
+        logger.exception("Ошибка при сравнении")
+        await callback.message.answer("Произошла ошибка при сравнении. Попробуйте ещё раз.")
+
+@dp.callback_query_handler(lambda c: c.data == "restart")
 async def restart(callback: types.CallbackQuery):
     await start(callback.message)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)

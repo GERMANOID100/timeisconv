@@ -145,7 +145,7 @@ async def compare_time(callback, city1, city2):
     m = m // 60
     diff = f"{sign}{h} ч {m} мин"
 
-    text = (
+    text = f"""
         f"🌍 Сравнение:
 
 "
@@ -170,79 +170,3 @@ async def compare_time(callback, city1, city2):
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
-
-
-
-import matplotlib.pyplot as plt
-import pandas as pd
-import io
-
-def generate_time_table_png(tz1, tz2, label1="Зона 1", label2="Зона 2"):
-    base_time = datetime.now(tz=tz1).replace(minute=0, second=0, microsecond=0)
-    current_hour = base_time.hour
-    times = []
-
-    for h in range(24):
-        t1 = base_time.replace(hour=h)
-        t2 = t1.astimezone(tz2)
-        highlight = "✅" if h == current_hour else ""
-        times.append({
-            label1: t1.strftime("%H:%M"),
-            label2: t2.strftime("%H:%M"),
-            "": highlight
-        })
-
-    df = pd.DataFrame(times)
-
-    fig, ax = plt.subplots(figsize=(6, 10))
-    ax.axis("off")
-    tbl = ax.table(cellText=df.values,
-                   colLabels=df.columns,
-                   cellLoc='center',
-                   loc='center')
-    tbl.scale(1, 1.5)
-    plt.tight_layout()
-
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=200)
-    buf.seek(0)
-    return buf
-
-
-
-from aiogram.dispatcher import filters
-from aiogram.types import ParseMode
-from asyncio import create_task, sleep
-
-reminders = {}  # uid -> [(datetime, text, tz)]
-
-@dp.message_handler(commands=['remind'])
-async def set_reminder(message: types.Message):
-    parts = message.text.split(maxsplit=2)
-    if len(parts) < 3:
-        await message.reply("Формат: /remind 09:00 текст напоминания")
-        return
-    time_str, note = parts[1], parts[2]
-    try:
-        uid = message.from_user.id
-        city = user_data.get(uid, {}).get("city1")
-        if not city:
-            await message.reply("Сначала выберите хотя бы один город.")
-            return
-        tz = get_timezone(city)
-        now = datetime.now(tz)
-        target_time = datetime.strptime(time_str, "%H:%M").replace(
-            year=now.year, month=now.month, day=now.day,
-            tzinfo=tz
-        )
-        if target_time < now:
-            target_time += timedelta(days=1)
-        delta = (target_time - now).total_seconds()
-        await message.reply(f"⏰ Напоминание установлено на {target_time.strftime('%H:%M')} ({city})")
-        create_task(schedule_reminder(uid, delta, note))
-    except Exception as e:
-        await message.reply("Ошибка в формате. Пример: /remind 09:00 Встреча")
-
-async def schedule_reminder(uid, delay, note):
-    await sleep(delay)
-    await bot.send_message(uid, f"🔔 Напоминание: {note}")

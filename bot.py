@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 
 import logging
 from aiogram import Bot, Dispatcher, types
@@ -145,28 +147,31 @@ async def compare_time(callback, city1, city2):
     m = m // 60
     diff = f"{sign}{h} ч {m} мин"
 
-    text = (
-        f"🌍 Сравнение:
-
-"
-        f"{city1} — {now1.strftime('%H:%M')} ({now1.strftime('%d.%m.%Y')})
-"
-        f"{city2} — {now2.strftime('%H:%M')} ({now2.strftime('%d.%m.%Y')})
-"
-        f"Разница: {diff}
-
-"
-        f"🕓 Временная таблица:
-"
+    
+text = (
+    f" Сравнение:\n\n"
+    f"{city1} — {now1.strftime('%H:%M')} ({now1.strftime('%d.%m.%Y')})\n"
+    f"{city2} — {now2.strftime('%H:%M')} ({now2.strftime('%d.%m.%Y')})\n"
+    f"Разница: {diff}\n\n"
+    f" Временная таблица:\n"
+)
+ "
     )
     for i in range(24):
         h1 = now1.replace(hour=i, minute=0)
         h2 = h1.astimezone(tz2)
-        mark = "✅" if i == now1.hour else "  "
+        mark = "" if i == now1.hour else "  "
         text += f"{mark} {h1.strftime('%H:%M')} → {h2.strftime('%H:%M')}
 "
 
-    await bot.send_message(uid, text)
+    
+    for i in range(24):
+        h1 = now1.replace(hour=i, minute=0)
+        h2 = h1.astimezone(tz2)
+        mark = "*" if i == now1.hour else " "
+        text += f"{mark} {h1.strftime('%H:%M')} -> {h2.strftime('%H:%M')}\n"
+    
+await bot.send_message(uid, text)
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)

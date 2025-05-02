@@ -40,7 +40,8 @@ cities = {
     'Соломоновы острова (UTC+11)': 'Pacific/Guadalcanal',
     'Окленд (UTC+12)': 'Pacific/Auckland',
     'Тонга (UTC+13)': 'Pacific/Tongatapu',
-    'Киритимати (UTC+14)': 'Pacific/Kiritimati',
+    'Киритимати (UTC+14)': 'Pacific/Kiritimati'
+}
     'Москва (UTC+3)': 'Europe/Moscow',
     'Нью-Йорк (UTC-4)': 'America/New_York',
     'Бали (UTC+8)': 'Asia/Makassar',
@@ -82,21 +83,25 @@ async def city2_selected(callback: types.CallbackQuery):
     tz2 = cities[city2]
     rows = []
     now_local = datetime.now(timezone(tz1)).replace(minute=0, second=0, microsecond=0)
-    now_for_compare1 = datetime.now(timezone(tz1)).replace(minute=0, second=0, microsecond=0)
-    now_for_compare2 = datetime.now(timezone(tz2)).replace(minute=0, second=0, microsecond=0)
     fmt = '%I:%M %p' if user_format.get(callback.from_user.id, '24') == '12' else '%H:%M'
 
     for i in range(24):
-        time_local = now_local.replace(hour=(now_local.hour + i) % 24)
-        local1_time = time_local.astimezone(timezone(tz1))
-        local1 = local1_time.strftime(fmt)
-        local2_time = time_local.astimezone(timezone(tz2))
-        local2 = local2_time.strftime(fmt)
-        mark1 = "🟢" if local1_time.replace(minute=0, second=0, microsecond=0) == now_for_compare1 else " "
-        mark2 = "🟢" if local2_time.replace(minute=0, second=0, microsecond=0) == now_for_compare2 else " "
-        rows.append(f"{local1:<7} {mark1} | {local2:<7} {mark2}")
+        time1 = now_local + timedelta(hours=i)
+        time2 = time1.astimezone(timezone(tz2))
 
-    table = "\n".join(rows)
+        day1 = time1.strftime('%a')
+        day2 = time2.strftime('%a')
+        t1 = time1.strftime(fmt)
+        t2 = time2.strftime(fmt)
+
+        mark = "🟢" if i == 0 else ""
+        rows.append(f"{day1} {t1:<7} | {day2} {t2:<7} {mark}")
+
+    table = "
+".join(rows)
+    text = f"{city1:<20} | {city2}
+{'-' * 38}
+{table}"
     text = f"{city1:<20} | {city2}\n{'-' * 38}\n{table}"
 
     kb = InlineKeyboardMarkup(row_width=1)

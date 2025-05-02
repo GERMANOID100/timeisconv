@@ -31,12 +31,14 @@ cities = {
     'Азорские острова (UTC+0)': 'Atlantic/Azores',
     'Лондон (UTC+1)': 'Europe/London',
     'Берлин (UTC+2)': 'Europe/Berlin',
+    'Минск (UTC+3)': 'Europe/Minsk',
     'Киев (UTC+3)': 'Europe/Kyiv',
     'Москва (UTC+3)': 'Europe/Moscow',
     'Дубай (UTC+4)': 'Asia/Dubai',
     'Исламабад (UTC+5)': 'Asia/Karachi',
     'Дакка (UTC+6)': 'Asia/Dhaka',
     'Бангкок (UTC+7)': 'Asia/Bangkok',
+    'Бали (UTC+8)': 'Asia/Makassar',
     'Сингапур (UTC+8)': 'Asia/Singapore',
     'Токио (UTC+9)': 'Asia/Tokyo',
     'Сидней (UTC+10)': 'Australia/Sydney',
@@ -50,9 +52,10 @@ user_selection = {}
 
 def get_time_info(tz_name):
     now = datetime.now(timezone(tz_name))
-    offset_hours = int(now.utcoffset().total_seconds() / 3600)
-    time_str = now.strftime('%H:%M:%S %d.%m.%Y')
-    return time_str, offset_hours
+    offset = now.utcoffset()
+    if offset is None:
+        raise ValueError("UTC offset is None")
+    return now.strftime('%H:%M:%S %d.%m.%Y'), int(offset.total_seconds() / 3600)
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
@@ -63,17 +66,13 @@ async def start(message: types.Message):
 
 @dp.callback_query_handler(lambda c: c.data.startswith("city1|"))
 async def city1_selected(callback: types.CallbackQuery):
-    try:
-        city1 = callback.data.split("|", 1)[1]
-        user_selection[callback.from_user.id] = {"city1": city1}
-        kb = InlineKeyboardMarkup(row_width=2)
-        for name in cities:
-            if name != city1:
-                kb.insert(InlineKeyboardButton(name, callback_data=f"city2|{name}"))
-        await callback.message.edit_text(f"Первый город: {city1}\nТеперь выберите второй город:", reply_markup=kb)
-    except Exception as e:
-        logger.exception("Ошибка при выборе первого города")
-        await callback.message.answer("Произошла ошибка. Попробуйте ещё раз.")
+    city1 = callback.data.split("|", 1)[1]
+    user_selection[callback.from_user.id] = {"city1": city1}
+    kb = InlineKeyboardMarkup(row_width=2)
+    for name in cities:
+        if name != city1:
+            kb.insert(InlineKeyboardButton(name, callback_data=f"city2|{name}"))
+    await callback.message.edit_text(f"Первый город: {city1}\nТеперь выберите второй город:", reply_markup=kb)
 
 @dp.callback_query_handler(lambda c: c.data.startswith("city2|"))
 async def city2_selected(callback: types.CallbackQuery):
@@ -81,13 +80,19 @@ async def city2_selected(callback: types.CallbackQuery):
         city2 = callback.data.split("|", 1)[1]
         data = user_selection.get(callback.from_user.id, {})
         city1 = data.get("city1")
-        if not city1:
-            await callback.message.answer("Ошибка. Начните с /start")
+
+        if not city1 or city1 not in cities or city2 not in cities:
+            await callback.message.answer("Ошибка. Выбор города некорректен.")
             return
+
         tz1 = cities[city1]
         tz2 = cities[city2]
+
+        logger.info(f"Сравнение: {city1} ({tz1}) vs {city2} ({tz2})")
+
         time1, offset1 = get_time_info(tz1)
         time2, offset2 = get_time_info(tz2)
+
         diff = abs(offset1 - offset2)
         diff_str = f"{int(diff)} ч." if diff.is_integer() else f"{diff:.1f} ч."
 
@@ -96,12 +101,14 @@ async def city2_selected(callback: types.CallbackQuery):
             f"🕒 {city2}: {time2}\n"
             f"📍Разница во времени: {diff_str}"
         )
+
         kb = InlineKeyboardMarkup().add(
             InlineKeyboardButton("Сравнить снова", callback_data="restart")
         )
+
         await callback.message.edit_text(text, reply_markup=kb)
     except Exception as e:
-        logger.exception("Ошибка при сравнении")
+        logger.exception("Ошибка при сравнении городов")
         await callback.message.answer("Произошла ошибка при сравнении. Попробуйте ещё раз.")
 
 @dp.callback_query_handler(lambda c: c.data == "restart")

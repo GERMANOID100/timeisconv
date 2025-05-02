@@ -90,7 +90,7 @@ async def city2_selected(callback: types.CallbackQuery):
         mark2 = "🟢" if hour == datetime.now(timezone(tz2)).hour else " "
         rows.append(f"{local1:<7} {mark1} | {local2:<7} {mark2}")
 
-    table = "
+    table = "\n".join(rows)
 ".join(rows)
     text = f"{city1:<20} | {city2}
 {'-' * 38}

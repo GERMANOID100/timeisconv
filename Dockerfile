@@ -7,9 +7,9 @@ RUN apt-get update && apt-get install -y gcc libffi-dev libssl-dev build-essenti
 WORKDIR /app
 COPY . /app
 
-# Обновление pip и установка зависимостей с устаревшим резолвером
+# Обновление pip и установка зависимостей
 RUN pip install --upgrade pip
-RUN pip install --use-deprecated=legacy-resolver -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Запуск бота
 CMD ["python", "bot.py"]

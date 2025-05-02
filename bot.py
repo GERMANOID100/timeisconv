@@ -40,7 +40,8 @@ cities = {
     'Соломоновы острова (UTC+11)': 'Pacific/Guadalcanal',
     'Окленд (UTC+12)': 'Pacific/Auckland',
     'Тонга (UTC+13)': 'Pacific/Tongatapu',
-    'Киритимати (UTC+14)': 'Pacific/Kiritimati',
+    'Киритимати (UTC+14)': 'Pacific/Kiritimati'
+}
     'Москва (UTC+3)': 'Europe/Moscow',
     'Нью-Йорк (UTC-4)': 'America/New_York',
     'Бали (UTC+8)': 'Asia/Makassar',
@@ -81,16 +82,19 @@ async def city2_selected(callback: types.CallbackQuery):
     tz1 = cities[city1]
     tz2 = cities[city2]
     rows = []
-    now_utc = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
-    current_hour = datetime.now(timezone(tz1)).hour
+    now_local = datetime.now(timezone(tz1)).replace(minute=0, second=0, microsecond=0)
+    now_for_compare1 = datetime.now(timezone(tz1)).replace(minute=0, second=0, microsecond=0)
+    now_for_compare2 = datetime.now(timezone(tz2)).replace(minute=0, second=0, microsecond=0)
     fmt = '%I:%M %p' if user_format.get(callback.from_user.id, '24') == '12' else '%H:%M'
 
-    for hour in range(24):
-        time_utc = now_utc.replace(hour=hour)
-        local1 = time_utc.astimezone(timezone(tz1)).strftime(fmt)
-        local2 = time_utc.astimezone(timezone(tz2)).strftime(fmt)
-        mark1 = "🟢" if hour == current_hour else " "
-        mark2 = "🟢" if hour == datetime.now(timezone(tz2)).hour else " "
+    for i in range(24):
+        time_local = now_local.replace(hour=(now_local.hour + i) % 24)
+        local1_time = time_local.astimezone(timezone(tz1))
+        local1 = local1_time.strftime(fmt)
+        local2_time = time_local.astimezone(timezone(tz2))
+        local2 = local2_time.strftime(fmt)
+        mark1 = "🟢" if local1_time.replace(minute=0, second=0, microsecond=0) == now_for_compare1 else " "
+        mark2 = "🟢" if local2_time.replace(minute=0, second=0, microsecond=0) == now_for_compare2 else " "
         rows.append(f"{local1:<7} {mark1} | {local2:<7} {mark2}")
 
     table = "\n".join(rows)

@@ -73,7 +73,6 @@ async def start(message: types.Message):
     kb.add(
         InlineKeyboardButton("🌆 Город", callback_data="mode_city"),
         InlineKeyboardButton("🌐 Часовой пояс", callback_data="mode_utc")
-    )
     await message.answer("Выберите способ сравнения:", reply_markup=kb)
 
 @dp.callback_query_handler(lambda c: c.data.startswith("mode_"))
@@ -154,7 +153,6 @@ text += f"{city1} — {now1.strftime('%H:%M')} ({now1.strftime('%d.%m.%Y')})\n"
 text += f"{city2} — {now2.strftime('%H:%M')} ({now2.strftime('%d.%m.%Y')})\n"
 text += f"Разница: {diff}\n\n"
 text += f" Временная таблица:\n"
-    )
     for i in range(24):
         h1 = now1.replace(hour=i, minute=0)
         h2 = h1.astimezone(tz2)

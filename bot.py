@@ -47,6 +47,7 @@ cities = {
 }
 
 user_selection = {}
+user_format = {}
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
@@ -82,14 +83,14 @@ async def city2_selected(callback: types.CallbackQuery):
     rows = []
     for hour in range(24):
         time_utc = now_utc.replace(hour=hour)
-        local1 = time_utc.astimezone(timezone(tz1)).strftime('%H:%M')
-        local2 = time_utc.astimezone(timezone(tz2)).strftime('%H:%M')
-        marker = "🟢" if hour == current_hour else "  "
+        fmt = '%I:%M %p' if user_format.get(callback.from_user.id, '24') == '12' else '%H:%M'
+        local1 = time_utc.astimezone(timezone(tz1)).strftime(fmt)
+        local2 = time_utc.astimezone(timezone(tz2)).strftime(fmt)
         
-    mark1 = "🟢" if hour == current_hour else "  "
-    mark2 = "🟢" if hour == datetime.now(timezone(tz2)).hour else "  "
-    rows.append(f"{local1:<8} {mark1} | {local2:<8} {mark2}")
+    mark1 = "🟢" if hour == current_hour else " "
+    mark2 = "🟢" if hour == datetime.now(timezone(tz2)).hour else " "
     
+        rows.append(f"{local1:<8} | {local2:<8} {marker}")
 
     table = "\n".join(rows)
     text = f"{city1:<20} | {city2}\n{'-' * 38}\n{table}"
@@ -97,7 +98,8 @@ async def city2_selected(callback: types.CallbackQuery):
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(
         InlineKeyboardButton("Сравнить снова", callback_data="restart"),
-        InlineKeyboardButton("Показать текущее время", callback_data="show_now")
+        InlineKeyboardButton("Показать текущее время", callback_data="show_now"),
+        InlineKeyboardButton("🔁 Обновить таблицу", callback_data="refresh_table")
     )
 
     await callback.message.edit_text(text, reply_markup=kb)
@@ -119,3 +121,26 @@ async def restart(callback: types.CallbackQuery):
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
+
+@dp.message_handler(commands=["format"])
+async def set_format(message: types.Message):
+    arg = message.get_args().strip()
+    if arg not in ["12", "24"]:
+        await message.answer("Используйте /format 12 или /format 24")
+        return
+    user_format[message.from_user.id] = arg
+    await message.answer(f"✅ Формат времени установлен: {arg}-часовой")
+
+@dp.callback_query_handler(lambda c: c.data == "refresh_table")
+async def refresh_table(callback: types.CallbackQuery):
+    data = user_selection.get(callback.from_user.id, {})
+    city1 = data.get("city1")
+    if not city1:
+        await callback.message.answer("Сначала выберите города: /start")
+        return
+    kb = InlineKeyboardMarkup(row_width=2)
+    for name in cities:
+        if name != city1:
+            kb.insert(InlineKeyboardButton(name, callback_data=f"city2|{name}"))
+    await callback.message.answer(f"Выберите второй город заново для обновления таблицы:", reply_markup=kb)

@@ -145,9 +145,7 @@ async def compare_time(callback, city1, city2):
     m = m // 60
     diff = f"{sign}{h} ч {m} мин"
 
-    text = f"""🌍 Сравнение:
-
-
+    text = f"""
         f"🌍 Сравнение:
 
 "

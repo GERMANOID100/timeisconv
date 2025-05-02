@@ -3,7 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils import executor
-from pytz import all_timezones, timezone
+from pytz import timezone
 from datetime import datetime
 
 API_TOKEN = os.getenv("BOT_TOKEN")
@@ -11,86 +11,86 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 logging.basicConfig(level=logging.INFO)
 
-# Отбираем города в формате "Region/City"
-cities = [tz for tz in all_timezones if '/' in tz and not tz.startswith('Etc/')]
+cities = {
+    'Бейкер-Айленд (UTC-12)': 'Etc/GMT+12',
+    'Ниуэ (UTC-11)': 'Pacific/Niue',
+    'Гонолулу (UTC-10)': 'Pacific/Honolulu',
+    'Анкоридж (UTC-8)': 'America/Anchorage',
+    'Лос-Анджелес (UTC-7)': 'America/Los_Angeles',
+    'Денвер (UTC-6)': 'America/Denver',
+    'Мехико (UTC-6)': 'America/Mexico_City',
+    'Нью-Йорк (UTC-4)': 'America/New_York',
+    'Сантьяго (UTC-4)': 'America/Santiago',
+    'Буэнос-Айрес (UTC-3)': 'America/Argentina/Buenos_Aires',
+    'Южная Георгия (UTC-2)': 'Atlantic/South_Georgia',
+    'Азорские острова (UTC+0)': 'Atlantic/Azores',
+    'Лондон (UTC+1)': 'Europe/London',
+    'Берлин (UTC+2)': 'Europe/Berlin',
+    'Киев (UTC+3)': 'Europe/Kyiv',
+    'Москва (UTC+3)': 'Europe/Moscow',
+    'Дубай (UTC+4)': 'Asia/Dubai',
+    'Исламабад (UTC+5)': 'Asia/Karachi',
+    'Дакка (UTC+6)': 'Asia/Dhaka',
+    'Бангкок (UTC+7)': 'Asia/Bangkok',
+    'Сингапур (UTC+8)': 'Asia/Singapore',
+    'Токио (UTC+9)': 'Asia/Tokyo',
+    'Сидней (UTC+10)': 'Australia/Sydney',
+    'Соломоновы острова (UTC+11)': 'Pacific/Guadalcanal',
+    'Окленд (UTC+12)': 'Pacific/Auckland',
+    'Тонга (UTC+13)': 'Pacific/Tongatapu',
+    'Острова Лайн (UTC+14)': 'Pacific/Kiritimati',
+}
 
-# Параметры пагинации
-PAGE_SIZE = 8
-user_state = {}
+user_selection = {}
 
 def get_time_info(tz_name):
     now = datetime.now(timezone(tz_name))
     utc_offset = now.utcoffset().total_seconds() / 3600
     return now.strftime('%H:%M:%S %d.%m.%Y'), int(utc_offset)
 
-def get_city_keyboard(page, prefix):
-    start = page * PAGE_SIZE
-    end = start + PAGE_SIZE
-    kb = InlineKeyboardMarkup(row_width=2)
-    for city in cities[start:end]:
-        kb.insert(InlineKeyboardButton(city, callback_data=f"{prefix}_{city}"))
-    nav_buttons = []
-    if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⏪ Назад", callback_data=f"{prefix}_page_{page-1}"))
-    if end < len(cities):
-        nav_buttons.append(InlineKeyboardButton("Вперёд ⏩", callback_data=f"{prefix}_page_{page+1}"))
-    if nav_buttons:
-        kb.row(*nav_buttons)
-    return kb
-
-@dp.message_handler(commands=["start"])
+@dp.message_handler(commands=['start'])
 async def start(message: types.Message):
-    user_state[message.from_user.id] = {"step": "city1", "page": 0}
-    kb = get_city_keyboard(0, "city1")
+    kb = InlineKeyboardMarkup(row_width=2)
+    for name in cities:
+        kb.insert(InlineKeyboardButton(name, callback_data=f"city1_{name}"))
     await message.answer("Выберите первый город:", reply_markup=kb)
 
-@dp.callback_query_handler(lambda c: c.data.startswith("city1_page_"))
-async def paginate_city1(callback: types.CallbackQuery):
-    page = int(callback.data.split("_")[-1])
-    user_state[callback.from_user.id]["page"] = page
-    kb = get_city_keyboard(page, "city1")
-    await callback.message.edit_reply_markup(reply_markup=kb)
-
-@dp.callback_query_handler(lambda c: c.data.startswith("city1_") and "page" not in c.data)
+@dp.callback_query_handler(lambda c: c.data.startswith('city1_'))
 async def select_city1(callback: types.CallbackQuery):
-    city1 = callback.data.split("_", 1)[1]
-    user_state[callback.from_user.id] = {"city1": city1, "step": "city2", "page": 0}
-    kb = get_city_keyboard(0, "city2")
+    city1 = callback.data.split('_', 1)[1]
+    user_selection[callback.from_user.id] = {'city1': city1}
+    kb = InlineKeyboardMarkup(row_width=2)
+    for name in cities:
+        if name != city1:
+            kb.insert(InlineKeyboardButton(name, callback_data=f"city2_{name}"))
     await callback.message.edit_text(f"Первый город: {city1}\nТеперь выберите второй город:", reply_markup=kb)
 
-@dp.callback_query_handler(lambda c: c.data.startswith("city2_page_"))
-async def paginate_city2(callback: types.CallbackQuery):
-    page = int(callback.data.split("_")[-1])
-    user_state[callback.from_user.id]["page"] = page
-    kb = get_city_keyboard(page, "city2")
-    await callback.message.edit_reply_markup(reply_markup=kb)
-
-@dp.callback_query_handler(lambda c: c.data.startswith("city2_") and "page" not in c.data)
+@dp.callback_query_handler(lambda c: c.data.startswith('city2_'))
 async def select_city2(callback: types.CallbackQuery):
-    city2 = callback.data.split("_", 1)[1]
-    data = user_state.get(callback.from_user.id, {})
-    city1 = data.get("city1")
+    city2 = callback.data.split('_', 1)[1]
+    data = user_selection.get(callback.from_user.id, {})
+    city1 = data.get('city1')
     if not city1:
         await callback.message.answer("Ошибка. Начните сначала: /start")
         return
-    time1, offset1 = get_time_info(city1)
-    time2, offset2 = get_time_info(city2)
-    diff = abs(offset1 - offset2)
-    diff_str = f"{int(diff)} ч." if diff.is_integer() else f"{diff:.1f} ч."
+    tz1 = cities[city1]
+    tz2 = cities[city2]
+    time1, offset1 = get_time_info(tz1)
+    time2, offset2 = get_time_info(tz2)
+    diff_hours = abs(offset1 - offset2)
+    diff_str = f"{int(diff_hours)} ч." if diff_hours.is_integer() else f"{diff_hours:.1f} ч."
     text = (
-        f"🕒 {city1} (UTC{offset1:+}): {time1}\n"
-        f"🕒 {city2} (UTC{offset2:+}): {time2}\n"
+        f"🕒 {city1}: {time1}\n"
+        f"🕒 {city2}: {time2}\n"
         f"📍Разница: {diff_str}"
     )
     kb = InlineKeyboardMarkup()
-    kb.add(
-        InlineKeyboardButton("Повторить сравнение", callback_data="restart"),
-    )
+    kb.add(InlineKeyboardButton("Сравнить снова", callback_data="restart"))
     await callback.message.edit_text(text, reply_markup=kb)
 
-@dp.callback_query_handler(lambda c: c.data == "restart")
+@dp.callback_query_handler(lambda c: c.data == 'restart')
 async def restart(callback: types.CallbackQuery):
     await start(callback.message)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)

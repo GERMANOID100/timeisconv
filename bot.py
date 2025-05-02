@@ -3,6 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils import executor
+from aiogram.dispatcher.filters import Command
 from pytz import timezone
 from datetime import datetime
 
@@ -50,6 +51,22 @@ cities = {
 
 user_selection = {}
 
+# Укажи свой Telegram user ID ниже
+ADMIN_ID = 234360904
+
+def get_time_info(tz_name):
+    try:
+        now = datetime.now(timezone(tz_name))
+        offset = now.utcoffset()
+        if offset is None:
+            raise ValueError("offset is None")
+        offset_hours = int(offset.total_seconds() / 3600)
+        logger.info(f"{tz_name}: now={now}, offset={offset_hours}")
+        return now.strftime('%H:%M:%S %d.%m.%Y'), offset_hours
+    except Exception as e:
+        logger.exception(f"Ошибка при получении времени для {tz_name}")
+        raise
+
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     kb = InlineKeyboardMarkup(row_width=2)
@@ -79,43 +96,75 @@ async def city2_selected(callback: types.CallbackQuery):
 
         tz1 = cities[city1]
         tz2 = cities[city2]
+        logger.info(f"Сравнение {city1} ({tz1}) vs {city2} ({tz2})")
 
-        logger.info(f"Сравнение: {city1} ({tz1}) vs {city2} ({tz2})")
+        time1, offset1 = get_time_info(tz1)
+        time2, offset2 = get_time_info(tz2)
 
-        # Текущий день
-        today = datetime.now(timezone(tz1)).strftime('%A')
-
-        # Заголовки
-        header = f"{today}\n\n{city1:<20} | {city2}"
-        separator = "-" * (len(header))
-
-        # Таблица по 24 часам
-        rows = []
-        now_utc = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
-        current_hour = datetime.now().astimezone(timezone(tz1)).hour
-
-        for hour in range(24):
-            time_utc = now_utc.replace(hour=hour)
-            local1 = time_utc.astimezone(timezone(tz1)).strftime('%H:%M')
-            local2 = time_utc.astimezone(timezone(tz2)).strftime('%H:%M')
-            marker = "←" if hour == current_hour else "  "
-            rows.append(f"{local1:<7} | {local2:<7} {marker}")
-
-        table = "\n".join(rows)
-        text = f"{header}\n{separator}\n{table}"
-
-        kb = InlineKeyboardMarkup().add(
-            InlineKeyboardButton("Сравнить снова", callback_data="restart")
+        diff = float(abs(offset1 - offset2))
+        diff_str = f"{int(diff)} ч." if diff.is_integer() else f"{diff:.1f} ч."
+        text = (
+            f"🕒 {city1}: {time1}\n"
+            f"🕒 {city2}: {time2}\n"
+            f"📍Разница во времени: {diff_str}"
         )
-
+        
+        kb = InlineKeyboardMarkup(row_width=1)
+        kb.add(
+            InlineKeyboardButton("Сравнить снова", callback_data="restart"),
+            InlineKeyboardButton("Показать текущее время", callback_data="show_now")
+        )
+    
         await callback.message.edit_text(text, reply_markup=kb)
     except Exception as e:
-        logger.exception("Ошибка при сравнении городов")
+        logger.exception("Ошибка при сравнении")
         await callback.message.answer("Произошла ошибка при сравнении. Попробуйте ещё раз.")
+
+
+@dp.callback_query_handler(lambda c: c.data == "show_now")
+async def show_now(callback: types.CallbackQuery):
+    data = user_selection.get(callback.from_user.id, {})
+    city1 = data.get("city1")
+    if not city1 or city1 not in cities:
+        await callback.message.answer("Сначала выберите города: /start")
+        return
+    tz1 = cities[city1]
+    now = datetime.now(timezone(tz1))
+    await callback.message.answer(f"Текущее время в {city1}: {now.strftime('%H:%M:%S %d.%m.%Y')}")
 
 @dp.callback_query_handler(lambda c: c.data == "restart")
 async def restart(callback: types.CallbackQuery):
     await start(callback.message)
 
-if __name__ == '__main__':
+
+@dp.message_handler(Command("addcity"))
+async def add_city(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("Access denied.")
+        return
+    try:
+        args = message.get_args().strip()
+        if "|" not in args:
+            await message.answer("❗ Format: Город (UTC±X)|Timezone_ID
+
+Example:
+Миннеаполис (UTC-6)|America/Chicago")
+            return
+        name, tz = [s.strip() for s in args.split("|", 1)]
+        from pytz import all_timezones
+        if tz not in all_timezones:
+            await message.answer("❗ Invalid timezone ID.")
+            return
+        if name in cities:
+            await message.answer("⚠️ Этот город уже есть.")
+            return
+        cities[name] = tz
+        await message.answer(f"✅ Добавлен город: {name} — {tz}")
+    except Exception as e:
+        await message.answer("Ошибка при добавлении города.")
+
+
     executor.start_polling(dp, skip_updates=True)
+
+
+if __name__ == '__main__':

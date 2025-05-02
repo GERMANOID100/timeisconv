@@ -145,7 +145,7 @@ async def add_city(message: types.Message):
     try:
         args = message.get_args().strip()
         if "|" not in args:
-            await message.answer("❗ Format: Город (UTC±X)|Timezone_ID
+            await message.answer("❗ Format: Город (UTC±X)|Timezone_ID\n\nExample:\nМиннеаполис (UTC-6)|America/Chicago")
 
 Example:
 Миннеаполис (UTC-6)|America/Chicago")

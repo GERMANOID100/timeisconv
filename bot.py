@@ -155,14 +155,12 @@ text = (
     f"Разница: {diff}\n\n"
     f" Временная таблица:\n"
 )
- "
     )
     for i in range(24):
         h1 = now1.replace(hour=i, minute=0)
         h2 = h1.astimezone(tz2)
         mark = "" if i == now1.hour else "  "
         text += f"{mark} {h1.strftime('%H:%M')} → {h2.strftime('%H:%M')}
-"
 
     
     for i in range(24):

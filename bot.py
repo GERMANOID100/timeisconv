@@ -155,8 +155,7 @@ text = (
     f"Разница: {diff}\n\n"
     f" Временная таблица:\n"
 )
- Временная таблица:
-"
+ "
     )
     for i in range(24):
         h1 = now1.replace(hour=i, minute=0)

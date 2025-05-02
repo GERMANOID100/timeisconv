@@ -104,13 +104,29 @@ async def city2_selected(callback: types.CallbackQuery):
             f"🕒 {city2}: {time2}\n"
             f"📍Разница во времени: {diff_str}"
         )
-        kb = InlineKeyboardMarkup().add(
-            InlineKeyboardButton("Сравнить снова", callback_data="restart")
+        
+        kb = InlineKeyboardMarkup(row_width=1)
+        kb.add(
+            InlineKeyboardButton("Сравнить снова", callback_data="restart"),
+            InlineKeyboardButton("Показать текущее время", callback_data="show_now")
         )
+    
         await callback.message.edit_text(text, reply_markup=kb)
     except Exception as e:
         logger.exception("Ошибка при сравнении")
         await callback.message.answer("Произошла ошибка при сравнении. Попробуйте ещё раз.")
+
+
+@dp.callback_query_handler(lambda c: c.data == "show_now")
+async def show_now(callback: types.CallbackQuery):
+    data = user_selection.get(callback.from_user.id, {})
+    city1 = data.get("city1")
+    if not city1 or city1 not in cities:
+        await callback.message.answer("Сначала выберите города: /start")
+        return
+    tz1 = cities[city1]
+    now = datetime.now(timezone(tz1))
+    await callback.message.answer(f"Текущее время в {city1}: {now.strftime('%H:%M:%S %d.%m.%Y')}")
 
 @dp.callback_query_handler(lambda c: c.data == "restart")
 async def restart(callback: types.CallbackQuery):

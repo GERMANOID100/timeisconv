@@ -50,6 +50,19 @@ cities = {
 
 user_selection = {}
 
+def get_time_info(tz_name):
+    try:
+        now = datetime.now(timezone(tz_name))
+        offset = now.utcoffset()
+        if offset is None:
+            raise ValueError("offset is None")
+        offset_hours = int(offset.total_seconds() / 3600)
+        logger.info(f"{tz_name}: now={now}, offset={offset_hours}")
+        return now.strftime('%H:%M:%S %d.%m.%Y'), offset_hours
+    except Exception as e:
+        logger.exception(f"Ошибка при получении времени для {tz_name}")
+        raise
+
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     kb = InlineKeyboardMarkup(row_width=2)
@@ -79,38 +92,24 @@ async def city2_selected(callback: types.CallbackQuery):
 
         tz1 = cities[city1]
         tz2 = cities[city2]
+        logger.info(f"Сравнение {city1} ({tz1}) vs {city2} ({tz2})")
 
-        logger.info(f"Сравнение: {city1} ({tz1}) vs {city2} ({tz2})")
+        time1, offset1 = get_time_info(tz1)
+        time2, offset2 = get_time_info(tz2)
 
-        # Текущий день
-        today = datetime.now(timezone(tz1)).strftime('%A')
-
-        # Заголовки
-        header = f"{today}\n\n{city1:<20} | {city2}"
-        separator = "-" * (len(header))
-
-        # Таблица по 24 часам
-        rows = []
-        now_utc = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
-        current_hour = datetime.now().astimezone(timezone(tz1)).hour
-
-        for hour in range(24):
-            time_utc = now_utc.replace(hour=hour)
-            local1 = time_utc.astimezone(timezone(tz1)).strftime('%H:%M')
-            local2 = time_utc.astimezone(timezone(tz2)).strftime('%H:%M')
-            marker = "←" if hour == current_hour else "  "
-            rows.append(f"{local1:<7} | {local2:<7} {marker}")
-
-        table = "\n".join(rows)
-        text = f"{header}\n{separator}\n{table}"
-
+        diff = float(abs(offset1 - offset2))
+        diff_str = f"{int(diff)} ч." if diff.is_integer() else f"{diff:.1f} ч."
+        text = (
+            f"🕒 {city1}: {time1}\n"
+            f"🕒 {city2}: {time2}\n"
+            f"📍Разница во времени: {diff_str}"
+        )
         kb = InlineKeyboardMarkup().add(
             InlineKeyboardButton("Сравнить снова", callback_data="restart")
         )
-
         await callback.message.edit_text(text, reply_markup=kb)
     except Exception as e:
-        logger.exception("Ошибка при сравнении городов")
+        logger.exception("Ошибка при сравнении")
         await callback.message.answer("Произошла ошибка при сравнении. Попробуйте ещё раз.")
 
 @dp.callback_query_handler(lambda c: c.data == "restart")

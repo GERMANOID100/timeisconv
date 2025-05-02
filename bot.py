@@ -42,9 +42,7 @@ async def cmd_compare(message: types.Message):
         tz2 = pytz.timezone(tz2_name)
     except Exception:
         await message.reply(
-            "Unknown time zone. Use IANA names like:
-Europe/Moscow
-Asia/Tokyo"
+            "Unknown time zone. Use IANA names like:\n  Europe/Moscow\n  Asia/Tokyo"
         )
         return
 

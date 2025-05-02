@@ -1,32 +1,70 @@
-# Telegram TimeBot (Robust Version)
+# Telegram TimeBot
 
-This Telegram bot compares current time between two selected timezones.
+Финальный Telegram-бот для наглядного сравнения времени между двумя часовыми зонами: городами или смещениями UTC.
 
-## Usage
+## 🚀 Возможности
 
-1. /start - show available timezones
-2. /compare <TZ1> <TZ2> - compare time between two timezones (e.g. /compare Moscow UTC+8)
+- 🌍 Выбор между:
+  - 📍 Городами (Москва, Токио, Нью-Йорк и др.)
+  - 🌐 Часовыми поясами (UTC±X)
+- 📅 Отображение даты и дня недели
+- ⏰ Показ времени в обоих зонах (24ч и 12ч формат)
+- 📊 Таблица сравнения на 24 часа вперёд (с подсветкой текущего часа)
+- 🔁 Кнопки "Повторить" и "Сменить города"
+- 📚 Поддержка пагинации (если городов/поисков больше 6)
+- 🌐 Подписи со смещением от UTC (например, UTC+3)
+- 🧭 Актуальное время на кнопках при выборе UTC
+- 📎 Полная локализация и стабильная работа через Railway
 
-## Features
+## 📦 Планы по улучшению
 
-- Robust error handling (global and per-command)
-- ASCII-only code (no emojis)
-- Hourly table in text format
-- Dockerfile for reliable deployment
+- 🖼 Генерация таблицы как изображения (PNG)
+- 🔔 Напоминания по выбранному времени в другом поясе
+- 🧠 Поддержка ручного ввода городов
 
-## Deployment on Railway
+---
 
-1. Push to GitHub
-2. Create project on Railway (Deploy from GitHub)
-3. Add environment variable:
-   - API_TOKEN = <your_bot_token>
-4. Railway will build and run using Dockerfile.
+## 🛠 Установка и запуск
 
-## Files
+### ✅ Требования
 
-- bot.py
-- requirements.txt
-- Dockerfile
-- Procfile
-- runtime.txt
-- README.md
+- Python 3.10+
+- Railway (или другой хостинг)
+- Аккаунт Telegram + бот через [@BotFather](https://t.me/BotFather)
+
+### 🔧 Запуск на Railway
+
+1. Залей этот проект в GitHub
+2. Перейди на [https://railway.app](https://railway.app)
+3. Создай новый проект → выбери GitHub репозиторий
+4. Установи переменные окружения:
+
+```
+API_TOKEN = <токен бота>
+```
+
+5. Railway сам установит зависимости и запустит бота
+
+---
+
+## 📁 Структура проекта
+
+```
+telegram-timebot/
+├── bot.py               # Основной код
+├── requirements.txt     # Зависимости (aiogram 2.25.2 + pytz)
+├── runtime.txt          # Python 3.10
+├── Procfile             # Команда запуска
+└── README.md            # Инструкция
+```
+
+## 🧾 Зависимости
+
+```
+aiogram==2.25.2
+pytz
+```
+
+---
+
+Разработано для тех, кто работает в международных командах, планирует встречи по времени и хочет наглядный инструмент ✈️

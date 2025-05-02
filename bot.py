@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 
 import logging
 from aiogram import Bot, Dispatcher, types
@@ -147,19 +149,19 @@ async def compare_time(callback, city1, city2):
 
     
 text = (
-    f"🌍 Сравнение:\n\n"
+    f" Сравнение:\n\n"
     f"{city1} — {now1.strftime('%H:%M')} ({now1.strftime('%d.%m.%Y')})\n"
     f"{city2} — {now2.strftime('%H:%M')} ({now2.strftime('%d.%m.%Y')})\n"
     f"Разница: {diff}\n\n"
-    f"🕓 Временная таблица:\n"
+    f" Временная таблица:\n"
 )
-🕓 Временная таблица:
+ Временная таблица:
 "
     )
     for i in range(24):
         h1 = now1.replace(hour=i, minute=0)
         h2 = h1.astimezone(tz2)
-        mark = "✅" if i == now1.hour else "  "
+        mark = "" if i == now1.hour else "  "
         text += f"{mark} {h1.strftime('%H:%M')} → {h2.strftime('%H:%M')}
 "
 

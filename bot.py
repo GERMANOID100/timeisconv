@@ -92,27 +92,24 @@ async def city2_selected(callback: types.CallbackQuery):
 
         tz1 = cities[city1]
         tz2 = cities[city2]
-        logger.info(f"Сравнение: {city1} ({tz1}) vs {city2} ({tz2})")
+        logger.info(f"Сравнение {city1} ({tz1}) vs {city2} ({tz2})")
 
         time1, offset1 = get_time_info(tz1)
         time2, offset2 = get_time_info(tz2)
 
-        diff = abs(offset1 - offset2)
+        diff = float(abs(offset1 - offset2))
         diff_str = f"{int(diff)} ч." if diff.is_integer() else f"{diff:.1f} ч."
-
         text = (
             f"🕒 {city1}: {time1}\n"
             f"🕒 {city2}: {time2}\n"
             f"📍Разница во времени: {diff_str}"
         )
-
         kb = InlineKeyboardMarkup().add(
             InlineKeyboardButton("Сравнить снова", callback_data="restart")
         )
-
         await callback.message.edit_text(text, reply_markup=kb)
     except Exception as e:
-        logger.exception("Ошибка при сравнении городов")
+        logger.exception("Ошибка при сравнении")
         await callback.message.answer("Произошла ошибка при сравнении. Попробуйте ещё раз.")
 
 @dp.callback_query_handler(lambda c: c.data == "restart")
@@ -120,7 +117,4 @@ async def restart(callback: types.CallbackQuery):
     await start(callback.message)
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
-
-if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)

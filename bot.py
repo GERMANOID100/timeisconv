@@ -77,15 +77,19 @@ async def city2_selected(callback: types.CallbackQuery):
     tz1 = cities[city1]
     tz2 = cities[city2]
     now_utc = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
-    current_hour = datetime.now().astimezone(timezone(tz1)).hour
+    current_hour = datetime.now(timezone(tz1)).hour
 
     rows = []
     for hour in range(24):
         time_utc = now_utc.replace(hour=hour)
         local1 = time_utc.astimezone(timezone(tz1)).strftime('%H:%M')
         local2 = time_utc.astimezone(timezone(tz2)).strftime('%H:%M')
-        marker = "←" if hour == current_hour else "  "
-        rows.append(f"{local1:<7} | {local2:<7} {marker}")
+        marker = "🟢" if hour == current_hour else "  "
+        
+    mark1 = "🟢" if hour == current_hour else "  "
+    mark2 = "🟢" if hour == datetime.now(timezone(tz2)).hour else "  "
+    rows.append(f"{local1:<8} {mark1} | {local2:<8} {mark2}")
+    
 
     table = "\n".join(rows)
     text = f"{city1:<20} | {city2}\n{'-' * 38}\n{table}"

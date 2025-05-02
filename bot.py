@@ -8,7 +8,7 @@ import os
 
 API_TOKEN = os.getenv("API_TOKEN")
 if not API_TOKEN:
-    raise ValueError("❌ Ошибка: переменная API_TOKEN не задана. Проверь Railway → Variables.")
+    raise ValueError("❌ Переменная окружения API_TOKEN не задана.")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,30 +19,33 @@ LANGS = {
     "ru": {
         "start": "Выберите первый город:",
         "next": "Выберите второй город:",
-        "again": "Сравнить другие города?",
+        "again": "🌍 Повторить сравнение",
+        "switch": "🔄 Сменить города",
         "result": (
-            "{city1} ({tz1}): {time1_24} | {time1_12}\n"
-            "{city2} ({tz2}): {time2_24} | {time2_12}\n"
+            "{city1} ({tz1})\n🗓 {date1}\n🕐 {time1_24} | {time1_12}\n\n"
+            "{city2} ({tz2})\n🗓 {date2}\n🕐 {time2_24} | {time2_12}\n\n"
             "Разница: {diff}"
         ),
         "error": "Произошла ошибка при получении времени.",
-        "lang_set": "Язык переключен на русский 🇷🇺"
+        "lang_set": "Язык переключен на русский 🇷🇺",
+        "manual": "Введите название города вручную:"
     },
     "en": {
         "start": "Select the first city:",
         "next": "Select the second city:",
-        "again": "Compare other cities?",
+        "again": "🌍 Compare again",
+        "switch": "🔄 Switch cities",
         "result": (
-            "{city1} ({tz1}): {time1_24} | {time1_12}\n"
-            "{city2} ({tz2}): {time2_24} | {time2_12}\n"
+            "{city1} ({tz1})\n🗓 {date1}\n🕐 {time1_24} | {time1_12}\n\n"
+            "{city2} ({tz2})\n🗓 {date2}\n🕐 {time2_24} | {time2_12}\n\n"
             "Difference: {diff}"
         ),
         "error": "Error while calculating time.",
-        "lang_set": "Language set to English 🇬🇧"
+        "lang_set": "Language set to English 🇬🇧",
+        "manual": "Type city name manually:"
     }
 }
 
-# Расширенный список городов
 cities = {
     "Москва": "Europe/Moscow",
     "Бали": "Asia/Makassar",
@@ -104,11 +107,9 @@ async def city_selected(callback_query: types.CallbackQuery):
         await bot.send_message(uid, LANGS[lang]["next"], reply_markup=make_keyboard())
     elif not data["city2"]:
         data["city2"] = callback_query.data
-        await show_time_comparison(uid, data["city1"], data["city2"], lang)
-        user_data[uid] = {"city1": None, "city2": None}
-        await bot.send_message(uid, LANGS[lang]["again"], reply_markup=make_keyboard())
+        await show_comparison(uid, data["city1"], data["city2"], lang)
 
-async def show_time_comparison(uid, city1, city2, lang):
+async def show_comparison(uid, city1, city2, lang):
     try:
         tz1_name = cities[city1]
         tz2_name = cities[city2]
@@ -116,23 +117,39 @@ async def show_time_comparison(uid, city1, city2, lang):
         tz2 = pytz.timezone(tz2_name)
         now1 = datetime.now(tz1)
         now2 = datetime.now(tz2)
-        delta = int((now2 - now1).total_seconds() / 3600)
-        sign = "+" if delta >= 0 else "-"
-        msg = LANGS[lang]["result"].format(
-            city1=city1,
-            city2=city2,
-            tz1=tz1_name,
-            tz2=tz2_name,
-            time1_24=now1.strftime("%H:%M"),
-            time2_24=now2.strftime("%H:%M"),
-            time1_12=now1.strftime("%I:%M %p"),
-            time2_12=now2.strftime("%I:%M %p"),
-            diff=f"{sign}{abs(delta)} ч" if lang == "ru" else f"{sign}{abs(delta)} h"
+        delta_seconds = abs(int((now2 - now1).total_seconds()))
+        hours, remainder = divmod(delta_seconds, 3600)
+        minutes = remainder // 60
+        sign = "+" if (now2 - now1).total_seconds() >= 0 else "-"
+        diff = f"{sign}{hours} ч {minutes} мин" if lang == "ru" else f"{sign}{hours} h {minutes} min"
+        kb = InlineKeyboardMarkup().add(
+            InlineKeyboardButton(LANGS[lang]["again"], callback_data="again"),
+            InlineKeyboardButton(LANGS[lang]["switch"], callback_data="switch")
         )
-        await bot.send_message(uid, msg)
+        msg = LANGS[lang]["result"].format(
+            city1=city1, tz1=tz1_name, date1=now1.strftime("%d.%m.%Y (%A)"),
+            time1_24=now1.strftime("%H:%M"), time1_12=now1.strftime("%I:%M %p"),
+            city2=city2, tz2=tz2_name, date2=now2.strftime("%d.%m.%Y (%A)"),
+            time2_24=now2.strftime("%H:%M"), time2_12=now2.strftime("%I:%M %p"),
+            diff=diff
+        )
+        await bot.send_message(uid, msg, reply_markup=kb)
+        user_data[uid] = {"city1": city2, "city2": city1}
     except Exception as e:
         logging.exception("Ошибка при сравнении времени")
         await bot.send_message(uid, LANGS[lang]["error"])
+
+@dp.callback_query_handler(lambda c: c.data in ["again", "switch"])
+async def handle_actions(callback_query: types.CallbackQuery):
+    uid = callback_query.from_user.id
+    lang = user_lang.get(uid, "ru")
+    last = user_data.get(uid, {"city1": None, "city2": None})
+    if callback_query.data == "again":
+        await bot.send_message(uid, LANGS[lang]["start"], reply_markup=make_keyboard())
+        user_data[uid] = {"city1": None, "city2": None}
+    elif callback_query.data == "switch":
+        if last["city1"] and last["city2"]:
+            await show_comparison(uid, last["city2"], last["city1"], lang)
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)

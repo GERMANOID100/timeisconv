@@ -148,13 +148,12 @@ async def compare_time(callback, city1, city2):
     diff = f"{sign}{h} ч {m} мин"
 
     
-text = (
-    f" Сравнение:\n\n"
-    f"{city1} — {now1.strftime('%H:%M')} ({now1.strftime('%d.%m.%Y')})\n"
-    f"{city2} — {now2.strftime('%H:%M')} ({now2.strftime('%d.%m.%Y')})\n"
-    f"Разница: {diff}\n\n"
-    f" Временная таблица:\n"
-)
+text = ""
+text += f" Сравнение:\n\n"
+text += f"{city1} — {now1.strftime('%H:%M')} ({now1.strftime('%d.%m.%Y')})\n"
+text += f"{city2} — {now2.strftime('%H:%M')} ({now2.strftime('%d.%m.%Y')})\n"
+text += f"Разница: {diff}\n\n"
+text += f" Временная таблица:\n"
     )
     for i in range(24):
         h1 = now1.replace(hour=i, minute=0)
